@@ -54,15 +54,17 @@ def render_unified_pre_override(fname, para_step1, cold_res, rz12_Re):
     _cap_keys = ["Cpbe","Cpce","Cpbc"]
     _ind_keys = ["Lb","Lc","Le"]
 
-    # Initialise session state defaults
-    for k in _cap_keys:
-        sk = f"preov_{k}_{fname}"
-        if sk not in st.session_state:
-            st.session_state[sk] = para_step1.get(k, 0.0) * 1e15
-    for k in _ind_keys:
-        sk = f"preov_{k}_{fname}"
-        if sk not in st.session_state:
-            st.session_state[sk] = para_step1.get(k, 0.0) * 1e12
+    # Sync preov_ caps/inds whenever upstream ov_ (Open/Short) values change
+    _step1_hash = tuple(
+        round(para_step1.get(k, 0.0) * 1e18)
+        for k in _cap_keys + _ind_keys
+    )
+    if st.session_state.get(f"preov_step1_hash_{fname}") != _step1_hash:
+        for k in _cap_keys:
+            st.session_state[f"preov_{k}_{fname}"] = para_step1.get(k, 0.0) * 1e15
+        for k in _ind_keys:
+            st.session_state[f"preov_{k}_{fname}"] = para_step1.get(k, 0.0) * 1e12
+        st.session_state[f"preov_step1_hash_{fname}"] = _step1_hash
     for var, sources in [("Rb",src_Rb),("Rc",src_Rc),("Re",src_Re)]:
         sk_src = f"preov_src_{var}_{fname}"
         sk_val = f"preov_{var}_{fname}"
