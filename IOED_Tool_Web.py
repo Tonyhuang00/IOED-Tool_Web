@@ -34,7 +34,7 @@ if not check_password():
 
 # 2. 定義功能頁面 (指向 tools 資料夾內的 Python 檔)
 # [現有功能]
-gummel_page = st.Page("tools/IOED_Gummel_Analyzer.py", title="Sim Gummel Plot Analyzer", icon="📈")
+gummel_page = st.Page("tools/IOED_Gummel_Analyzer_2.py", title="Sim Gummel Plot Analyzer", icon="📈")
 sim_rf_page = st.Page("tools/IOED_RF_Analyzer_16.py", title="Sim RF Plot Analyzer", icon="📈")
 rf_page = st.Page("tools/IOED_HBT_RF_extract.py", title="RF S-Parameter Extraction", icon="📡")
 
