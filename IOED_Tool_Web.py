@@ -46,7 +46,7 @@ csv_process_page = st.Page("tools/csv_process.py", title="Measurement Data Muti-
 # 3. 建立側邊欄群組導航選單
 pg = st.navigation({
     "高頻量測 (RF)": [rf_page],
-    "元件模擬 (TCAD)": [gummel_page],
+    "元件模擬 (TCAD)": [gummel_page],[sim_rf_page]
     "直流量測 (DC)": [b1500a_page, hp4155a_page],
     "資料處理 (Data)": [csv_process_page]
 })
