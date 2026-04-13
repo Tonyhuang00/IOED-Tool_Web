@@ -1,5 +1,5 @@
 """
-IOED RF Analyzer  v4.0 (build 14)
+IOED RF Analyzer  v4.2 (build 16)
 ─────────────────────────────────────────────────────────────────────────────
 Changes vs v3.0 (build 13):
   • Z-matrix contact resistance de-embedding applied GLOBALLY at import time
@@ -25,7 +25,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 st.set_page_config(page_title="IOED RF Analyzer", layout="wide")
-st.title("📡 IOED RF Analyzer  v4.0")
+st.title("📡 IOED RF Analyzer  v4.2")
 st.caption(
     "Atlas TCAD CSV / RF CSV / Touchstone S2P · "
     "Global Z-matrix contact R de-embedding · "
@@ -1540,7 +1540,7 @@ st.caption(
     "在此輸入 Rb/Rc/Re 後，**所有後續分析（Bode、π-model、S2P 輸出）都使用去嵌後的數據**。\n\n"
     "Z_int = Z_meas − [[Rb+Re, Re], [Re, Rc+Re]]  →  Y_int = inv(Z_int)  →  S_int, H_int"
 )
-deembed_on = st.checkbox("啟用 Contact R De-embedding", value=True, key="global_deembed",
+deembed_on = st.checkbox("啟用 Contact R De-embedding", value=False, key="global_deembed",
                           help="關閉後直接使用原始 CSV 數據（不做去嵌）")
 gc1, gc2, gc3 = st.columns(3)
 g_Rb = gc1.number_input("Rb — Base (Ω)", value=0.0, min_value=0.0, format="%.4f",
@@ -1631,19 +1631,19 @@ selected_files=st.multiselect(
 # ══════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════
-tab_ov,tab_ind,tab_pi,tab_sum=st.tabs(
-    ["📊 Overlay","📁 Individual","🔬 π-Model & Verification","📋 Summary"])
+tab_ind,tab_pi,tab_sum=st.tabs(
+    ["📊 Bode & Individual","🔬 π-Model & Verification","📋 Summary"])
 
 # ──────────────────────────────────────────────────────────────
-# TAB 1 — OVERLAY
+# TAB 1 — BODE & INDIVIDUAL (merged)
 # ──────────────────────────────────────────────────────────────
-with tab_ov:
+with tab_ind:
     with st.expander("⚙️ Plot Settings",expanded=True):
         c1,c2,c3,c4=st.columns(4)
         fmin_ov=c1.number_input("Freq Min (GHz)",value=0.4,min_value=0.0001,format="%.4f",key="ov_f1")
         fmax_ov=c2.number_input("Freq Max (GHz)",value=300.,min_value=0.1,key="ov_f2")
-        dmin_ov=c3.number_input("dB Min",value=-10.,key="ov_d1")
-        dmax_ov=c4.number_input("dB Max",value=50., key="ov_d2")
+        dmin_ov=c3.number_input("dB Min",value=0.,key="ov_d1")
+        dmax_ov=c4.number_input("dB Max",value=35., key="ov_d2")
         t1,t2,t3=st.columns(3)
         h21_ov=t1.checkbox("|h21|² → fT",value=True,key="ov_h21")
         su_ov =t2.checkbox("Mason U → fmax(U)",value=True,key="ov_u")
@@ -1792,10 +1792,11 @@ with tab_ov:
     fp2.update_layout(**_lay("Overlay — Plateau","GBP (GHz)",[0,ym_],xr_ov))
     st.plotly_chart(fp2,use_container_width=True)
 
-# ──────────────────────────────────────────────────────────────
-# TAB 2 — INDIVIDUAL
-# ──────────────────────────────────────────────────────────────
-with tab_ind:
+    # ──────────────────────────────────────────────────────────────
+    # INDIVIDUAL FILE ANALYSIS
+    # ──────────────────────────────────────────────────────────────
+    st.divider()
+    st.markdown("### 📁 Individual File Analysis")
     if not selected_files:
         st.info("請先選擇檔案。")
     else:
@@ -1803,8 +1804,8 @@ with tab_ind:
             r1,r2,r3,r4=st.columns(4)
             fmin_id=r1.number_input("Freq Min (GHz)",value=0.4,min_value=0.0001,format="%.4f",key="id_f1")
             fmax_id=r2.number_input("Freq Max (GHz)",value=300.,min_value=0.1,key="id_f2")
-            dmin_id=r3.number_input("dB Min",value=-10.,key="id_d1")
-            dmax_id=r4.number_input("dB Max",value=50.,key="id_d2")
+            dmin_id=r3.number_input("dB Min",value=0.,key="id_d1")
+            dmax_id=r4.number_input("dB Max",value=35.,key="id_d2")
             t1,t2,t3=st.columns(3)
             h21_id=t1.checkbox("|h21|² → fT",value=True,key="id_h21")
             su_id =t2.checkbox("Mason U → fmax(U)",value=True,key="id_u")
