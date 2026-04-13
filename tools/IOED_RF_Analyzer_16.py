@@ -1526,7 +1526,12 @@ def build_excel(sum_df,all_data):
 # FILE UPLOAD & PARSE
 # ══════════════════════════════════════════════════════════════
 uploaded_files=st.file_uploader(
-    "📂 Upload RF CSV / S2P files",type=["csv","s2p"],accept_multiple_files=True)
+    "📂 Upload RF CSV / S2P files",type=["csv","s2p"],accept_multiple_files=True,
+    key=f"uploader_{st.session_state.get('upload_key',0)}")
+
+if st.button("🗑️ 清除所有上傳檔案", key="clear_uploads"):
+    st.session_state["upload_key"] = st.session_state.get("upload_key", 0) + 1
+    st.rerun()
 
 # ── Global Contact Resistance De-embedding ────────────────────
 st.markdown("### 🔧 Contact Resistance De-embedding (Global)")
@@ -2795,55 +2800,39 @@ with tab_sum:
 
 
     st.divider()
-    st.markdown("#### 🔄 Converter")
+    st.markdown("#### 📥 Downloads")
+
+    # ── S2P Converter ──
+    st.markdown("**S2P Converter**")
     if any(d.get("deembed_applied") for d in all_data.values()):
-        st.info("📌 輸出的 S2P/CSV 為 **de-embedded** 數據（已扣除 contact resistance）。")
+        st.caption("📌 輸出為 de-embedded 數據（已扣除 contact resistance）")
     conv_file=st.selectbox("Choose file for conversion", list(all_data.keys()), key="conv_file")
     cfile=all_data[conv_file]
-    cv1,cv2=st.columns(2)
-    with cv1:
-        st.download_button("⬇️ Download as S2P",
-                           data=export_s2p_bytes(cfile["freq_hz"], cfile["S"], cfile.get("z0",50.0)),
-                           file_name=f"{Path(conv_file).stem}.s2p",
-                           mime="text/plain",use_container_width=True)
-    with cv2:
-        st.download_button("⬇️ Download as CSV",
-                           data=export_csv_bytes(cfile["freq_hz"], cfile["S"], cfile.get("Y"), cfile.get("H"), cfile.get("meta")),
-                           file_name=f"{Path(conv_file).stem}.csv",
-                           mime="text/csv",use_container_width=True)
+    st.download_button("⬇️ Download as S2P",
+                       data=export_s2p_bytes(cfile["freq_hz"], cfile["S"], cfile.get("z0",50.0)),
+                       file_name=f"{Path(conv_file).stem}.s2p",
+                       mime="text/plain",use_container_width=True)
 
-    d1,d2=st.columns(2); date=datetime.now().strftime("%Y%m%d")
-    with d1:
-        # Enhanced Excel: includes summary + bias-dependent data
-        def build_excel_v2(sum_df, all_data, rows):
-            buf=io.BytesIO()
-            with pd.ExcelWriter(buf,engine="openpyxl") as w:
-                sum_df.to_excel(w,sheet_name="Summary",index=False)
-                # Bias-dependent sheet
-                bias_cols = ["File","Ic (mA)","Ib (µA)","β","gm (mS)",
-                             "fT (GHz)","fT Method","fmax U (GHz)","fmax U Method","fmax MAG (GHz)"]
-                bias_df = pd.DataFrame([{k:r.get(k) for k in bias_cols} for r in rows])
-                bias_df.to_excel(w,sheet_name="Bias_Dependent",index=False)
-                # Per-file sheets
-                for k,d in all_data.items():
-                    base=re.sub(r'[:\\/*?\[\]]','_',Path(k).stem)[:28]
-                    d["df_metrics"].to_excel(w,sheet_name=base,index=False)
-                    d["df_pi"].to_excel(w,sheet_name=base[:24]+"_pi",index=False)
-            return buf.getvalue()
+    # ── Excel Download ──
+    st.markdown("**Excel Export**")
+    date=datetime.now().strftime("%Y%m%d")
+    excel_name = st.text_input("Excel 檔名", value=f"IOED_RF_{date}",
+                                key="excel_name", help="不需要加 .xlsx 副檔名")
 
-        st.download_button("📥 Excel (含 bias-dependent)",
-                           data=build_excel_v2(sum_df,all_data,rows),
-                           file_name=f"IOED_RF_{date}.xlsx",
-                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                           use_container_width=True)
-    with d2:
-        zbuf=io.BytesIO()
-        with zipfile.ZipFile(zbuf,"w",zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("Summary.csv",sum_df.to_csv(index=False).encode())
+    def build_excel_v2(sum_df, all_data, rows):
+        buf=io.BytesIO()
+        with pd.ExcelWriter(buf,engine="openpyxl") as w:
+            sum_df.to_excel(w,sheet_name="Summary",index=False)
+            bias_cols = [c for c in sum_df.columns]
+            sum_df.to_excel(w,sheet_name="Bias_Dependent",index=False)
             for k,d in all_data.items():
-                stem_=Path(k).stem
-                zf.writestr(f"{stem_}_metrics.csv",d["df_metrics"].to_csv(index=False).encode())
-                zf.writestr(f"{stem_}_pi.csv",      d["df_pi"].to_csv(index=False).encode())
-        st.download_button("📦 ZIP (CSV)",data=zbuf.getvalue(),
-                           file_name=f"IOED_RF_{date}.zip",
-                           mime="application/zip",use_container_width=True)
+                base=re.sub(r'[:\\/*?\[\]]','_',Path(k).stem)[:28]
+                d["df_metrics"].to_excel(w,sheet_name=base,index=False)
+                d["df_pi"].to_excel(w,sheet_name=base[:24]+"_pi",index=False)
+        return buf.getvalue()
+
+    st.download_button("📥 Download Excel",
+                       data=build_excel_v2(sum_df,all_data,rows),
+                       file_name=f"{excel_name}.xlsx",
+                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                       use_container_width=True)
