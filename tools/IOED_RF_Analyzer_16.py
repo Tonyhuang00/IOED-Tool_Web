@@ -1631,13 +1631,13 @@ selected_files=st.multiselect(
 # ══════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════
-tab_ind,tab_pi,tab_sum=st.tabs(
-    ["📊 Bode & Individual","🔬 π-Model & Verification","📋 Summary"])
+tab_ov,tab_ind,tab_pi,tab_sum=st.tabs(
+    ["📊 Overlay","📁 Individual","🔬 π-Model & Verification","📋 Summary"])
 
 # ──────────────────────────────────────────────────────────────
-# TAB 1 — BODE & INDIVIDUAL (merged)
+# TAB 1 — OVERLAY (uploaded files only, no UIUC reference)
 # ──────────────────────────────────────────────────────────────
-with tab_ind:
+with tab_ov:
     with st.expander("⚙️ Plot Settings",expanded=True):
         c1,c2,c3,c4=st.columns(4)
         fmin_ov=c1.number_input("Freq Min (GHz)",value=0.4,min_value=0.0001,format="%.4f",key="ov_f1")
@@ -1649,38 +1649,6 @@ with tab_ind:
         su_ov =t2.checkbox("Mason U → fmax(U)",value=True,key="ov_u")
         sm_ov =t3.checkbox("MAG/MSG → fmax(MAG)",value=True,key="ov_m")
         st.caption("fT/fmax 萃取：自動偵測 rolloff 區域，single-pole fitting 外插至 0 dB")
-
-        # ── Reference data overlay ─────────────────────────────
-        st.markdown("**📎 Reference Data Overlay**")
-        show_uiuc = st.checkbox("顯示 UIUC 量測數據 (Lucas Yang dissertation)", value=True, key="show_uiuc")
-        with st.expander("自定義 Reference Data（可選）", expanded=False):
-            ref_col1, ref_col2, ref_col3 = st.columns(3)
-            ref_h21_file = ref_col1.file_uploader(
-                "|h21|² ref (CSV: freq_Hz, dB)", type=["csv"], key="ref_h21",
-                help="兩欄 CSV：第一欄 = 頻率(Hz)，第二欄 = |h21|²(dB)。無標題列。")
-            ref_U_file = ref_col2.file_uploader(
-                "Mason U ref (CSV: freq_Hz, dB)", type=["csv"], key="ref_U")
-            ref_MAG_file = ref_col3.file_uploader(
-                "MAG/MSG ref (CSV: freq_Hz, dB)", type=["csv"], key="ref_MAG")
-            ref_label = st.text_input("Reference label", value="Custom Ref", key="ref_label")
-
-    # Parse reference data
-    def _parse_ref_csv(file_obj):
-        if file_obj is None:
-            return None, None
-        try:
-            raw = file_obj.getvalue().decode('utf-8', errors='ignore')
-            lines = [l.strip() for l in raw.splitlines() if l.strip() and not l.strip().startswith('#')]
-            data = np.array([[float(x) for x in l.split(',')] for l in lines if ',' in l])
-            if data.shape[1] >= 2 and len(data) >= 2:
-                return data[:,0] * 1e-9, data[:,1]  # freq_Hz → GHz, dB
-        except:
-            pass
-        return None, None
-
-    ref_h21_f, ref_h21_g = _parse_ref_csv(ref_h21_file)
-    ref_U_f, ref_U_g = _parse_ref_csv(ref_U_file)
-    ref_MAG_f, ref_MAG_g = _parse_ref_csv(ref_MAG_file)
 
     xr_ov=(fmin_ov,fmax_ov); yr_ov=(dmin_ov,dmax_ov)
 
@@ -1717,40 +1685,6 @@ with tab_ind:
         if sm_ov:
             fb.add_trace(go.Scatter(x=df_["Freq (GHz)"],y=df_["MAG/MSG (dB)"],
                                      name=f"MAG–{lbl}",line=dict(color=col_MAG,width=2.5,dash='solid'),hovertemplate=hov))
-
-    # ── Overlay reference data ──
-    # Built-in UIUC data
-    if show_uiuc:
-        if h21_ov:
-            fb.add_trace(go.Scatter(
-                x=_UIUC_H21[:,0], y=_UIUC_H21[:,1], mode='markers',
-                name="|h21|²–UIUC Meas.",
-                marker=dict(size=6, color='black', symbol='circle-open', line=dict(width=1.5)),
-                hovertemplate="Freq:%{x:.3f}GHz<br>|h21|²:%{y:.2f}dB<extra>UIUC</extra>"))
-        if su_ov:
-            fb.add_trace(go.Scatter(
-                x=_UIUC_U[:,0], y=_UIUC_U[:,1], mode='markers',
-                name="U–UIUC Meas.",
-                marker=dict(size=6, color='black', symbol='diamond-open', line=dict(width=1.5)),
-                hovertemplate="Freq:%{x:.3f}GHz<br>U:%{y:.2f}dB<extra>UIUC</extra>"))
-
-    # Custom uploaded reference data
-    _rl = ref_label or "Ref"
-    if ref_h21_f is not None and h21_ov:
-        fb.add_trace(go.Scatter(x=ref_h21_f, y=ref_h21_g, mode='markers',
-                                 name=f"|h21|²–{_rl}",
-                                 marker=dict(size=5, color='#1f77b4', symbol='circle-open', line=dict(width=1.5)),
-                                 hovertemplate="Freq:%{x:.3f}GHz<br>|h21|²:%{y:.2f}dB<extra></extra>"))
-    if ref_U_f is not None and su_ov:
-        fb.add_trace(go.Scatter(x=ref_U_f, y=ref_U_g, mode='markers',
-                                 name=f"U–{_rl}",
-                                 marker=dict(size=5, color='#d62728', symbol='diamond-open', line=dict(width=1.5)),
-                                 hovertemplate="Freq:%{x:.3f}GHz<br>U:%{y:.2f}dB<extra></extra>"))
-    if ref_MAG_f is not None and sm_ov:
-        fb.add_trace(go.Scatter(x=ref_MAG_f, y=ref_MAG_g, mode='markers',
-                                 name=f"MAG–{_rl}",
-                                 marker=dict(size=5, color='#2ca02c', symbol='triangle-up-open', line=dict(width=1.5)),
-                                 hovertemplate="Freq:%{x:.3f}GHz<br>MAG:%{y:.2f}dB<extra></extra>"))
 
     fb.add_hline(y=0,line_dash="dash",line_color="black")
 
@@ -1792,11 +1726,10 @@ with tab_ind:
     fp2.update_layout(**_lay("Overlay — Plateau","GBP (GHz)",[0,ym_],xr_ov))
     st.plotly_chart(fp2,use_container_width=True)
 
-    # ──────────────────────────────────────────────────────────────
-    # INDIVIDUAL FILE ANALYSIS
-    # ──────────────────────────────────────────────────────────────
-    st.divider()
-    st.markdown("### 📁 Individual File Analysis")
+# ──────────────────────────────────────────────────────────────
+# TAB 2 — INDIVIDUAL (with UIUC reference overlay)
+# ──────────────────────────────────────────────────────────────
+with tab_ind:
     if not selected_files:
         st.info("請先選擇檔案。")
     else:
@@ -1812,6 +1745,30 @@ with tab_ind:
             sm_id =t3.checkbox("MAG/MSG → fmax(MAG)",value=True,key="id_m")
 
             st.caption("fT/fmax: 自動偵測 rolloff → single-pole fitting 外插至 0 dB")
+
+            # ── Reference data overlay ─────────────────────────────
+            st.markdown("**📎 Reference Data Overlay**")
+            show_uiuc_id = st.checkbox("顯示 UIUC 量測數據", value=True, key="show_uiuc_id")
+            with st.expander("自定義 Reference Data（可選）", expanded=False):
+                ref_col1, ref_col2 = st.columns(2)
+                ref_h21_file = ref_col1.file_uploader(
+                    "|h21|² ref (CSV: freq_Hz, dB)", type=["csv"], key="ref_h21",
+                    help="兩欄 CSV：頻率(Hz), |h21|²(dB)。無標題列。")
+                ref_U_file = ref_col2.file_uploader(
+                    "Mason U ref (CSV: freq_Hz, dB)", type=["csv"], key="ref_U")
+
+            def _parse_ref_csv(file_obj):
+                if file_obj is None: return None, None
+                try:
+                    raw = file_obj.getvalue().decode('utf-8', errors='ignore')
+                    lines = [l.strip() for l in raw.splitlines() if l.strip() and not l.strip().startswith('#')]
+                    data = np.array([[float(x) for x in l.split(',')] for l in lines if ',' in l])
+                    if data.shape[1] >= 2 and len(data) >= 2:
+                        return data[:,0] * 1e-9, data[:,1]
+                except: pass
+                return None, None
+            ref_h21_f, ref_h21_g = _parse_ref_csv(ref_h21_file)
+            ref_U_f, ref_U_g = _parse_ref_csv(ref_U_file)
 
             st.markdown("**文獻比較窗口**")
             fit_win_ghz = st.number_input("Single-pole fit 窗口上限 (GHz)", value=50.0,
@@ -1910,6 +1867,29 @@ with tab_ind:
                 with ta:
                     fig_bode_id=make_bode(df_,d["Label"],xr_id,yr_id,h21_id,su_id,sm_id,c_,
                                            extrap_lines=extrap_lines_id)
+                    # Add UIUC reference
+                    if show_uiuc_id:
+                        if h21_id:
+                            fig_bode_id.add_trace(go.Scatter(
+                                x=_UIUC_H21[:,0], y=_UIUC_H21[:,1], mode='markers',
+                                name="|h21|²–UIUC",
+                                marker=dict(size=5, color='black', symbol='circle-open', line=dict(width=1.5)),
+                                hovertemplate="f=%{x:.2f}GHz<br>%{y:.2f}dB<extra>UIUC</extra>"))
+                        if su_id:
+                            fig_bode_id.add_trace(go.Scatter(
+                                x=_UIUC_U[:,0], y=_UIUC_U[:,1], mode='markers',
+                                name="U–UIUC",
+                                marker=dict(size=5, color='black', symbol='diamond-open', line=dict(width=1.5)),
+                                hovertemplate="f=%{x:.2f}GHz<br>%{y:.2f}dB<extra>UIUC</extra>"))
+                    # Custom reference
+                    if ref_h21_f is not None and h21_id:
+                        fig_bode_id.add_trace(go.Scatter(x=ref_h21_f, y=ref_h21_g, mode='markers',
+                            name="|h21|²–Custom Ref",
+                            marker=dict(size=5, color='gray', symbol='circle-open', line=dict(width=1.5))))
+                    if ref_U_f is not None and su_id:
+                        fig_bode_id.add_trace(go.Scatter(x=ref_U_f, y=ref_U_g, mode='markers',
+                            name="U–Custom Ref",
+                            marker=dict(size=5, color='gray', symbol='diamond-open', line=dict(width=1.5))))
 
                     st.plotly_chart(fig_bode_id,use_container_width=True)
                 with tb:
